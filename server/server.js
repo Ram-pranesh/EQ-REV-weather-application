@@ -16,33 +16,34 @@ app.get("/api/weather", async (req, res) => {
   }
 
   try {
+    const apiKey = process.env.OPENWEATHER_API_KEY || process.env.WEATHER_API_KEY;
     const url =
-      `https://api.weatherapi.com/v1/current.json` +
-      `?key=${process.env.WEATHER_API_KEY}` +
-      `&q=${encodeURIComponent(city)}`;
+      `https://api.openweathermap.org/data/2.5/weather` +
+      `?q=${encodeURIComponent(city)}` +
+      `&appid=${apiKey}` +
+      `&units=metric`;
 
     const response = await fetch(url);
     const data = await response.json();
 
-    // Code 1006 means "No matching location found"
-    if (data.error && data.error.code === 1006) {
+    if (response.status === 404 || data.cod === "404" || data.cod === 404) {
       return res.status(404).json({ error: "City not found" });
     }
 
     if (!response.ok) {
-      console.log("WeatherAPI error:", response.status, data);
+      console.log("Weather API error:", response.status, data);
       return res.status(500).json({ error: "Unable to fetch weather data" });
     }
 
     res.json({
-      city: data.location.name,
-      country: data.location.country,
-      temperature: Math.round(data.current.temp_c),
-      description: data.current.condition.text,
-      icon: "https:" + data.current.condition.icon,
-      humidity: data.current.humidity,
-      wind: Math.round((data.current.wind_kph / 3.6) * 10) / 10,
-      feelsLike: Math.round(data.current.feelslike_c),
+      city: data.name,
+      country: data.sys ? data.sys.country : "",
+      temperature: Math.round(data.main.temp),
+      description: data.weather && data.weather[0] ? data.weather[0].description : "",
+      icon: data.weather && data.weather[0] ? data.weather[0].icon : "",
+      humidity: data.main.humidity,
+      wind: data.wind ? Math.round(data.wind.speed * 10) / 10 : 0,
+      feelsLike: Math.round(data.main.feels_like),
     });
   } catch (error) {
     console.error("Server error:", error);
